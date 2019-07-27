@@ -79,42 +79,6 @@ sed -i 's/^HOOKS.*/HOOKS=(base udev keyboard autodetect modconf block keymap enc
 sed -i 's/^MODULES.*/MODULES=(ext4 intel_agp i915)/' /etc/mkinitcpio.conf
 mkinitcpio -p linux
 
-echo "Setting up systemd-boot"
-bootctl --path=/boot install
-
-mkdir -p /boot/loader/
-touch /boot/loader/loader.conf
-tee -a /boot/loader/loader.conf << END
-default arch
-timeout 0
-editor 0
-END
-
-mkdir -p /boot/loader/entries/
-touch /boot/loader/entries/arch.conf
-tee -a /boot/loader/entries/arch.conf << END
-title ArchLinux
-linux /vmlinuz-linux
-initrd /intel-ucode.img
-initrd /initramfs-linux.img
-options cryptdevice=LABEL=LVMPART:cryptoVols root=/dev/mapper/Arch-root resume=/dev/mapper/Arch-swap quiet rw
-END
-
-echo "Setting up Pacman hook for automatic systemd-boot updates"
-mkdir -p /etc/pacman.d/hooks/
-touch /etc/pacman.d/hooks/systemd-boot.hook
-tee -a /etc/pacman.d/hooks/systemd-boot.hook << END
-[Trigger]
-Type = Package
-Operation = Upgrade
-Target = systemd
-
-[Action]
-Description = Updating systemd-boot
-When = PostTransaction
-Exec = /usr/bin/bootctl update
-END
-
 echo "Enabling autologin"
 mkdir -p  /etc/systemd/system/getty@tty1.service.d/
 touch /etc/systemd/system/getty@tty1.service.d/override.conf
@@ -125,7 +89,7 @@ ExecStart=-/usr/bin/agetty --autologin $user_name --noclear %I $TERM
 END
 
 echo "Updating mirrors list"
-cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.BAK
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.org
 reflector --latest 200 --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 touch /etc/pacman.d/hooks/mirrors-update.hook
