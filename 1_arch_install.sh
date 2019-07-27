@@ -7,24 +7,26 @@ hostname=""
 user_name=""
 continent_city=""           # e.g. Europe/Amsterdam
 swap_size="8"               # should be 20 for a 16GB machine with hibernation: https://itsfoss.com/swap-size/
+disk="nvme0n1"              # e.g. sda, nvme0n1
+partition="${disk}p"        # for sda: ${disk}, for nvme0n1: ${disk}p
 
 echo "Updating system clock"
 timedatectl set-ntp true
 
 echo "Creating partition tables"
-printf "n\n1\n4096\n+512M\nef00\nw\ny\n" | gdisk /dev/nvme0n1
-printf "n\n2\n\n\n8e00\nw\ny\n" | gdisk /dev/nvme0n1
+printf "n\n1\n4096\n+512M\nef00\nw\ny\n" | gdisk $disk
+printf "n\n2\n\n\n8e00\nw\ny\n" | gdisk $disk
 
 echo "Zeroing partitions"
-cat /dev/zero > /dev/nvme0n1p1
-cat /dev/zero > /dev/nvme0n1p2
+cat /dev/zero > $partition1
+cat /dev/zero > $partition2
 
 echo "Building EFI filesystem"
-yes | mkfs.fat -F32 /dev/nvme0n1p1
+yes | mkfs.fat -F32 $partition1
 
 echo "Setting up cryptographic volume"
-printf "%s" "$encryption_passphrase" | cryptsetup -c aes-xts-plain64 -h sha512 -s 512 --use-random --type luks2 --label LVMPART luksFormat /dev/nvme0n1p2
-printf "%s" "$encryption_passphrase" | cryptsetup luksOpen /dev/nvme0n1p2 cryptoVols
+printf "%s" "$encryption_passphrase" | cryptsetup -c aes-xts-plain64 -h sha512 -s 512 --use-random --type luks2 --label LVMPART luksFormat $partition2
+printf "%s" "$encryption_passphrase" | cryptsetup luksOpen $partition2 cryptoVols
 
 echo "Setting up LVM"
 pvcreate /dev/mapper/cryptoVols
@@ -39,7 +41,7 @@ yes | mkfs.ext4 /dev/mapper/Arch-root
 echo "Mounting root/boot and enabling swap"
 mount /dev/mapper/Arch-root /mnt
 mkdir /mnt/boot
-mount /dev/nvme0n1p1 /mnt/boot
+mount $partition1 /mnt/boot
 swapon /dev/mapper/Arch-swap
 
 echo "Installing Arch Linux"
