@@ -9,7 +9,8 @@ user_name="arch"
 continent_city="Europe/Amsterdam"
 swap_size="2"                       # should be 20 for a 16GB machine with hibernation: https://itsfoss.com/swap-size/
 disk="/dev/sda"                     # e.g. /dev/sda, /dev/nvme0n1
-partition="${disk}"                 # for sda: ${disk}, for nvme0n1: ${disk}p
+efi_partition="/dev/sda1"           # e.g. /dev/sda1, /dev/nvme0n1p1
+root_partition="/dev/sda2"
 
 echo "Updating system clock"
 timedatectl set-ntp true
@@ -20,16 +21,16 @@ printf "n\n2\n\n\n8e00\nw\ny\n" | gdisk $disk
 
 echo "Zeroing partitions"
 set +e
-cat /dev/zero > ${partition}1
-cat /dev/zero > ${partition}2
+cat /dev/zero > $efi_partition
+cat /dev/zero > $root_partition
 set -e
 
 echo "Building EFI filesystem"
-yes | mkfs.fat -F32 ${partition}1
+yes | mkfs.fat -F32 $efi_partition
 
 echo "Setting up cryptographic volume"
-printf "%s" "$encryption_passphrase" | cryptsetup -c aes-xts-plain64 -h sha512 -s 512 --use-random --type luks2 --label LVMPART luksFormat ${partition}2
-printf "%s" "$encryption_passphrase" | cryptsetup luksOpen ${partition}2 cryptoVols
+printf "%s" "$encryption_passphrase" | cryptsetup -c aes-xts-plain64 -h sha512 -s 512 --use-random --type luks2 --label LVMPART luksFormat $root_partition
+printf "%s" "$encryption_passphrase" | cryptsetup luksOpen $root_partition cryptoVols
 
 echo "Setting up LVM"
 pvcreate /dev/mapper/cryptoVols
@@ -41,14 +42,14 @@ echo "Building filesystems for root and swap"
 yes | mkswap /dev/mapper/Arch-swap
 yes | mkfs.ext4 /dev/mapper/Arch-root
 
-echo "Mounting root/boot and enabling swap"
+echo "Mounting ESP/root and enabling swap"
 mount /dev/mapper/Arch-root /mnt
-mkdir /mnt/boot
-mount ${partition}1 /mnt/boot
+mkdir /mnt/efi
+mount $efi_partition /mnt/efi
 swapon /dev/mapper/Arch-swap
 
 echo "Installing Arch Linux"
-yes '' | pacstrap /mnt base base-devel intel-ucode networkmanager wget reflector
+yes '' | pacstrap /mnt base base-devel intel-ucode networkmanager wget reflector refind-efi
 
 echo "Generating fstab"
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -114,17 +115,16 @@ systemctl enable NetworkManager
 
 echo "Adding user as a sudoer"
 echo '%wheel ALL=(ALL) ALL' | EDITOR='tee -a' visudo
+
+echo "Setup rEFInd"
+mkdir -p /efi/EFI/BOOT
+cp /usr/share/refind/refind_x64.efi /efi/EFI/BOOT/bootx64.efi
+tee -a /boot/refind_linux.conf << END
+"Boot with standard options"  "cryptdevice=LABEL=LVMPART:cryptoVols root=/dev/mapper/Arch-root resume=/dev/mapper/Arch-swap quiet rw"
+END
 EOF
 
-#umount -R /mnt
-#swapoff -a
+umount -R /mnt
+swapoff -a
 
 echo "ArchLinux is ready. You can reboot now!"
-
-cat <<EOF
-arch-chroot /mnt
-pacman -S refind-efi
-refind-install --usedefault /dev/sda1
-refind-mkrlconf
-ls /boot/efi/EFI/BOOT
-EOF
