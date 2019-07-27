@@ -1,32 +1,33 @@
 #!/bin/bash
+set -e
 
-encryption_passphrase=""
-root_password=""
-user_password=""
-hostname=""
-user_name=""
-continent_city=""           # e.g. Europe/Amsterdam
-swap_size="8"               # should be 20 for a 16GB machine with hibernation: https://itsfoss.com/swap-size/
-disk="nvme0n1"              # e.g. sda, nvme0n1
-partition="${disk}p"        # for sda: ${disk}, for nvme0n1: ${disk}p
+encryption_passphrase="letmein"
+root_password="letmein"
+user_password="letmein"
+hostname="archhost"
+user_name="arch"
+continent_city="Europe/Amsterdam"
+swap_size="2"                       # should be 20 for a 16GB machine with hibernation: https://itsfoss.com/swap-size/
+disk="sda"                          # e.g. sda, nvme0n1
+partition="${disk}"                 # for sda: ${disk}, for nvme0n1: ${disk}p
 
 echo "Updating system clock"
 timedatectl set-ntp true
 
 echo "Creating partition tables"
-printf "n\n1\n4096\n+512M\nef00\nw\ny\n" | gdisk $disk
-printf "n\n2\n\n\n8e00\nw\ny\n" | gdisk $disk
+printf "n\n1\n4096\n+512M\nef00\nw\ny\n" | gdisk /dev/$disk
+printf "n\n2\n\n\n8e00\nw\ny\n" | gdisk /dev/$disk
 
 echo "Zeroing partitions"
-cat /dev/zero > $partition1
-cat /dev/zero > $partition2
+cat /dev/zero > ${partition}1
+cat /dev/zero > ${partition}2
 
 echo "Building EFI filesystem"
-yes | mkfs.fat -F32 $partition1
+yes | mkfs.fat -F32 ${partition}1
 
 echo "Setting up cryptographic volume"
-printf "%s" "$encryption_passphrase" | cryptsetup -c aes-xts-plain64 -h sha512 -s 512 --use-random --type luks2 --label LVMPART luksFormat $partition2
-printf "%s" "$encryption_passphrase" | cryptsetup luksOpen $partition2 cryptoVols
+printf "%s" "$encryption_passphrase" | cryptsetup -c aes-xts-plain64 -h sha512 -s 512 --use-random --type luks2 --label LVMPART luksFormat ${partition}2
+printf "%s" "$encryption_passphrase" | cryptsetup luksOpen ${partition}2 cryptoVols
 
 echo "Setting up LVM"
 pvcreate /dev/mapper/cryptoVols
@@ -41,7 +42,7 @@ yes | mkfs.ext4 /dev/mapper/Arch-root
 echo "Mounting root/boot and enabling swap"
 mount /dev/mapper/Arch-root /mnt
 mkdir /mnt/boot
-mount $partition1 /mnt/boot
+mount ${partition}1 /mnt/boot
 swapon /dev/mapper/Arch-swap
 
 echo "Installing Arch Linux"
