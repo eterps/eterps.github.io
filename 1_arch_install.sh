@@ -15,12 +15,14 @@ echo "Updating system clock"
 timedatectl set-ntp true
 
 echo "Creating partition tables"
-printf "n\n1\n4096\n+512M\nef00\nw\ny\n" | gdisk /dev/$disk
-printf "n\n2\n\n\n8e00\nw\ny\n" | gdisk /dev/$disk
+printf "n\n1\n4096\n+512M\nef00\nw\ny\n" | gdisk $disk
+printf "n\n2\n\n\n8e00\nw\ny\n" | gdisk $disk
 
 echo "Zeroing partitions"
+set +e
 cat /dev/zero > ${partition}1
 cat /dev/zero > ${partition}2
+set -e
 
 echo "Building EFI filesystem"
 yes | mkfs.fat -F32 ${partition}1
