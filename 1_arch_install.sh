@@ -8,7 +8,7 @@ hostname="archhost"
 user_name="arch"
 continent_city="Europe/Amsterdam"
 swap_size="2"                       # should be 20 for a 16GB machine with hibernation: https://itsfoss.com/swap-size/
-disk="sda"                          # e.g. sda, nvme0n1
+disk="/dev/sda"                     # e.g. /dev/sda, /dev/nvme0n1
 partition="${disk}"                 # for sda: ${disk}, for nvme0n1: ${disk}p
 
 echo "Updating system clock"
