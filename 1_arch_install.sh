@@ -116,7 +116,15 @@ echo "Adding user as a sudoer"
 echo '%wheel ALL=(ALL) ALL' | EDITOR='tee -a' visudo
 EOF
 
-umount -R /mnt
-swapoff -a
+#umount -R /mnt
+#swapoff -a
 
 echo "ArchLinux is ready. You can reboot now!"
+
+cat <<EOF
+arch-chroot /mnt
+pacman -S refind-efi
+refind-install --usedefault /dev/sda1
+refind-mkrlconf
+ls /boot/efi/EFI/BOOT
+EOF
