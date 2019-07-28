@@ -122,6 +122,14 @@ cp /usr/share/refind/refind_x64.efi /boot/EFI/BOOT/bootx64.efi
 tee -a /boot/refind_linux.conf << END
 "Boot with standard options"  "cryptdevice=LABEL=LVMPART:cryptoVols root=/dev/mapper/Arch-root resume=/dev/mapper/Arch-swap quiet rw"
 END
+mkdir -p /boot/EFI/refind/themes
+tee -a /boot/EFI/refind/refind.conf << END
+timeout 10
+include themes/Catalina/theme.conf
+END
+git clone https://github.com/mireq/rEFInd-Catalina.git
+cp -r rEFInd-Catalina/refind/Catalina /boot/EFI/refind/themes/
+rm -rf rEFInd-Catalina
 EOF
 
 umount -R /mnt
