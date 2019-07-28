@@ -49,7 +49,7 @@ mount $boot_partition /mnt/boot
 swapon /dev/mapper/Arch-swap
 
 echo "Installing Arch Linux"
-yes '' | pacstrap /mnt base base-devel intel-ucode networkmanager wget reflector refind-efi
+yes '' | pacstrap /mnt base base-devel intel-ucode networkmanager wget reflector refind-efi git
 
 echo "Generating fstab"
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -122,13 +122,14 @@ cp /usr/share/refind/refind_x64.efi /boot/EFI/BOOT/bootx64.efi
 tee -a /boot/refind_linux.conf << END
 "Boot with standard options"  "cryptdevice=LABEL=LVMPART:cryptoVols root=/dev/mapper/Arch-root resume=/dev/mapper/Arch-swap quiet rw"
 END
-mkdir -p /boot/EFI/refind/themes
-tee -a /boot/EFI/refind/refind.conf << END
+tee -a /boot/EFI/BOOT/refind.conf << END
 timeout 10
+showtools shutdown,reboot
 include themes/Catalina/theme.conf
 END
-git clone https://github.com/mireq/rEFInd-Catalina.git
-cp -r rEFInd-Catalina/refind/Catalina /boot/EFI/refind/themes/
+mkdir -p /boot/EFI/BOOT/themes
+git clone https://github.com/eterps/rEFInd-Catalina.git
+cp -r rEFInd-Catalina/refind/Catalina /boot/EFI/BOOT/themes/
 rm -rf rEFInd-Catalina
 EOF
 
